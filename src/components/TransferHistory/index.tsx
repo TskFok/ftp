@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import { useTransferStore } from "../../stores/transferStore";
 import { useHostStore } from "../../stores/hostStore";
+import { useFileBrowserStore } from "../../stores/fileBrowserStore";
 import { useFileBrowser } from "../../hooks/useFileBrowser";
 import { formatFileSize, formatTimestamp } from "../../utils/formatters";
 import type { TransferHistoryItem, TransferStatus } from "../../types";
@@ -30,19 +31,32 @@ const statusLabels: Record<TransferStatus, string> = {
   cancelled: "已取消",
 };
 
+/** -1 表示查看全部链接的传输历史 */
+const ALL_HOSTS = -1;
+
 const TransferHistory: React.FC = () => {
   const { history, loading, fetchHistory, clearHistory, retryTransfer } =
     useTransferStore();
   const hosts = useHostStore((s) => s.hosts);
   const fetchHosts = useHostStore((s) => s.fetchHosts);
+  const connectedHostId = useFileBrowserStore((s) => s.connectedHostId);
   const { navigateLocal, connectAndBrowse } = useFileBrowser();
 
-  const [filterHostId, setFilterHostId] = React.useState<number | undefined>();
+  const [selectedHostId, setSelectedHostId] = React.useState<number>(ALL_HOSTS);
 
   useEffect(() => {
-    fetchHistory();
+    if (connectedHostId != null) {
+      setSelectedHostId(connectedHostId);
+    }
+  }, [connectedHostId]);
+
+  useEffect(() => {
     fetchHosts();
-  }, [fetchHistory, fetchHosts]);
+  }, [fetchHosts]);
+
+  useEffect(() => {
+    fetchHistory(selectedHostId === ALL_HOSTS ? undefined : selectedHostId);
+  }, [fetchHistory, selectedHostId]);
 
   const handleRetry = async (record: TransferHistoryItem) => {
     if (!record.id) return;
@@ -74,17 +88,16 @@ const TransferHistory: React.FC = () => {
     }
   };
 
-  const filteredHistory = useMemo(() => {
-    if (filterHostId === undefined) return history;
-    return history.filter((h) => h.host_id === filterHostId);
-  }, [history, filterHostId]);
+  const displayHistory = history;
 
   const hostOptions = useMemo(
-    () =>
-      hosts.map((h) => ({
+    () => [
+      { label: "全部", value: ALL_HOSTS },
+      ...hosts.map((h) => ({
         label: h.name,
         value: h.id!,
       })),
+    ],
     [hosts],
   );
 
@@ -205,15 +218,23 @@ const TransferHistory: React.FC = () => {
       extra={
         <Space>
           <Select
-            placeholder="按主机筛选"
+            placeholder="选择链接"
             allowClear
             size="small"
             style={{ width: 140 }}
             options={hostOptions}
-            value={filterHostId}
-            onChange={(v) => setFilterHostId(v)}
+            value={selectedHostId}
+            onChange={(v) => setSelectedHostId(v)}
           />
-          <Button size="small" onClick={clearHistory}>
+          <Button
+            size="small"
+            onClick={() =>
+              clearHistory(
+                selectedHostId === ALL_HOSTS ? undefined : selectedHostId,
+              )
+            }
+            disabled={displayHistory.length === 0}
+          >
             清空
           </Button>
         </Space>
@@ -221,7 +242,7 @@ const TransferHistory: React.FC = () => {
     >
       <Table
         columns={columns}
-        dataSource={filteredHistory}
+        dataSource={displayHistory}
         loading={loading}
         size="small"
         rowKey="id"

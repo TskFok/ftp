@@ -92,6 +92,13 @@ pub fn clear_history(conn: &Connection) -> Result<usize, rusqlite::Error> {
     conn.execute("DELETE FROM transfer_history", [])
 }
 
+pub fn clear_history_by_host(
+    conn: &Connection,
+    host_id: i64,
+) -> Result<usize, rusqlite::Error> {
+    conn.execute("DELETE FROM transfer_history WHERE host_id = ?1", params![host_id])
+}
+
 fn row_to_history(row: &rusqlite::Row) -> Result<TransferHistory, rusqlite::Error> {
     let dir_str: String = row.get(5)?;
     let status_str: String = row.get(8)?;
@@ -387,6 +394,50 @@ mod tests {
 
         let all = get_all_history(&conn).unwrap();
         assert!(all.is_empty());
+    }
+
+    #[test]
+    fn test_clear_history_by_host() {
+        let conn = setup_db();
+        let host1 = insert_test_host(&conn);
+        let host2 = host_repo::insert(
+            &conn,
+            &Host::new("other".into(), "192.168.1.1".into(), 22, Protocol::Sftp, "user2".into()),
+        )
+        .unwrap();
+        let hid1 = host1.id.unwrap();
+        let hid2 = host2.id.unwrap();
+
+        for i in 0..2 {
+            let th = TransferHistory::new(
+                hid1,
+                format!("h1_{}.txt", i),
+                format!("/r/h1_{}", i),
+                format!("/l/h1_{}", i),
+                TransferDirection::Upload,
+                10,
+            );
+            insert_history(&conn, &th).unwrap();
+        }
+        let th2 = TransferHistory::new(
+            hid2,
+            "h2.txt".into(),
+            "/r/h2".into(),
+            "/l/h2".into(),
+            TransferDirection::Download,
+            20,
+        );
+        insert_history(&conn, &th2).unwrap();
+
+        let deleted = clear_history_by_host(&conn, hid1).unwrap();
+        assert_eq!(deleted, 2);
+
+        let h1_history = get_history_by_host(&conn, hid1).unwrap();
+        assert!(h1_history.is_empty());
+
+        let h2_history = get_history_by_host(&conn, hid2).unwrap();
+        assert_eq!(h2_history.len(), 1);
+        assert_eq!(h2_history[0].filename, "h2.txt");
     }
 
     #[test]

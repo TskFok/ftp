@@ -82,7 +82,7 @@ describe("transferStore", () => {
   });
 
   describe("clearHistory", () => {
-    it("清空历史记录", async () => {
+    it("清空全部历史记录", async () => {
       useTransferStore.setState({ history: sampleHistory });
       mockInvoke.mockResolvedValueOnce(undefined);
 
@@ -90,6 +90,35 @@ describe("transferStore", () => {
 
       expect(mockInvoke).toHaveBeenCalledWith("clear_transfer_history");
       expect(useTransferStore.getState().history).toEqual([]);
+    });
+
+    it("按主机清空历史记录", async () => {
+      const mixedHistory = [
+        ...sampleHistory,
+        {
+          id: 3,
+          host_id: 2,
+          filename: "other.txt",
+          remote_path: "/remote/other.txt",
+          local_path: "/local/other.txt",
+          direction: "download" as const,
+          file_size: 500,
+          transferred_size: 500,
+          status: "success" as const,
+          started_at: "2025-01-03 00:00:00",
+        },
+      ];
+      useTransferStore.setState({ history: mixedHistory });
+      mockInvoke.mockResolvedValueOnce(undefined);
+
+      await useTransferStore.getState().clearHistory(1);
+
+      expect(mockInvoke).toHaveBeenCalledWith(
+        "clear_transfer_history_by_host",
+        { hostId: 1 },
+      );
+      expect(useTransferStore.getState().history).toHaveLength(1);
+      expect(useTransferStore.getState().history[0].host_id).toBe(2);
     });
   });
 

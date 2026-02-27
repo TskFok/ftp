@@ -48,6 +48,7 @@ pub fn run() {
             commands::host::delete_host,
             commands::transfer::get_transfer_history,
             commands::transfer::clear_transfer_history,
+            commands::transfer::clear_transfer_history_by_host,
             commands::transfer::start_upload,
             commands::transfer::start_download,
             commands::transfer::cancel_transfer,

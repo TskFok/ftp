@@ -7,7 +7,7 @@ interface TransferState {
   activeTransfers: TransferProgress[];
   loading: boolean;
   fetchHistory: (hostId?: number) => Promise<void>;
-  clearHistory: () => Promise<void>;
+  clearHistory: (hostId?: number) => Promise<void>;
   updateProgress: (progress: TransferProgress) => void;
   removeActiveTransfer: (transferId: string) => void;
   startUpload: (
@@ -56,9 +56,16 @@ export const useTransferStore = create<TransferState>((set, _get) => ({
     }
   },
 
-  clearHistory: async () => {
-    await invoke("clear_transfer_history");
-    set({ history: [] });
+  clearHistory: async (hostId?: number) => {
+    if (hostId != null) {
+      await invoke("clear_transfer_history_by_host", { hostId });
+      set((s) => ({
+        history: s.history.filter((h) => h.host_id !== hostId),
+      }));
+    } else {
+      await invoke("clear_transfer_history");
+      set({ history: [] });
+    }
   },
 
   updateProgress: (progress: TransferProgress) => {

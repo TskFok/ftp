@@ -58,6 +58,17 @@ pub fn clear_transfer_history(db: State<'_, SharedDatabase>) -> Result<(), Strin
 }
 
 #[tauri::command]
+pub fn clear_transfer_history_by_host(
+    host_id: i64,
+    db: State<'_, SharedDatabase>,
+) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    transfer_repo::clear_history_by_host(&conn, host_id)
+        .map_err(|e| e.to_string())
+        .map(|_| ())
+}
+
+#[tauri::command]
 pub fn start_upload(
     host_id: i64,
     local_path: String,
