@@ -488,10 +488,9 @@ mod tests {
         conn.execute(
             "INSERT INTO hosts (name, host, port, protocol, username) VALUES ('test', 'localhost', 22, 'sftp', 'user')",
             [],
-        ).unwrap();
-        Arc::new(Database {
-            conn: Mutex::new(conn),
-        })
+        )
+        .unwrap();
+        Arc::new(Database::new_test(conn).unwrap())
     }
 
     fn setup_engine() -> TransferEngine {

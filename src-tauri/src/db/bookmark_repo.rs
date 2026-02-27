@@ -90,7 +90,7 @@ mod tests {
 
     fn insert_test_host(conn: &Connection) -> Host {
         let h = Host::new("bm-host".into(), "10.0.0.1".into(), 22, Protocol::Sftp, "u".into());
-        host_repo::insert(conn, &h).unwrap()
+        host_repo::insert(conn, &h, None).unwrap()
     }
 
     #[test]

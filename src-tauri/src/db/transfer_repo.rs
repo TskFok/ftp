@@ -268,7 +268,7 @@ mod tests {
 
     fn insert_test_host(conn: &Connection) -> Host {
         let h = Host::new("test".into(), "127.0.0.1".into(), 22, Protocol::Sftp, "user".into());
-        host_repo::insert(conn, &h).unwrap()
+        host_repo::insert(conn, &h, None).unwrap()
     }
 
     #[test]
@@ -403,6 +403,7 @@ mod tests {
         let host2 = host_repo::insert(
             &conn,
             &Host::new("other".into(), "192.168.1.1".into(), 22, Protocol::Sftp, "user2".into()),
+            None,
         )
         .unwrap();
         let hid1 = host1.id.unwrap();

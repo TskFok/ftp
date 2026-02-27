@@ -140,10 +140,15 @@ describe("HostManager", () => {
     });
   });
 
-  it("点击测试连接按钮调用 testConnection", async () => {
+  it("点击测试连接按钮调用 testConnectionById", async () => {
     const user = userEvent.setup();
-    mockInvoke.mockResolvedValue(sampleHosts);
-    useHostStore.setState({ hosts: sampleHosts });
+    const sanitizedHosts = sampleHosts.map((h) => ({
+      ...h,
+      password: undefined,
+      key_path: undefined,
+    }));
+    mockInvoke.mockResolvedValue(sanitizedHosts);
+    useHostStore.setState({ hosts: sanitizedHosts });
 
     renderWithProvider(<HostManager />);
 
@@ -152,8 +157,8 @@ describe("HostManager", () => {
     await user.click(testButtons[0]);
 
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("test_connection", {
-        host: sampleHosts[0],
+      expect(mockInvoke).toHaveBeenCalledWith("test_connection_by_id", {
+        hostId: 1,
       });
     });
   });

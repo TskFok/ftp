@@ -2,6 +2,7 @@ use crate::db::transfer_repo;
 use crate::models::transfer::{TransferDirection, TransferHistory};
 use crate::services::connection::ConnectionManager;
 use crate::services::transfer_engine::{TransferEngine, TransferTask};
+use crate::utils::path::{normalize_and_validate, normalize_path_for_create, sanitize_filename};
 use crate::SharedDatabase;
 use tauri::State;
 
@@ -11,9 +12,10 @@ struct DirWalkResult {
 }
 
 fn collect_local_dir_entries(local_dir: &str, remote_dir: &str) -> Result<DirWalkResult, String> {
+    let safe_local = normalize_and_validate(local_dir)?;
     let mut files = Vec::new();
     let mut dirs = Vec::new();
-    let mut queue = vec![(local_dir.to_string(), remote_dir.to_string())];
+    let mut queue = vec![(safe_local.to_string_lossy().to_string(), remote_dir.to_string())];
 
     while let Some((local, remote)) = queue.pop() {
         dirs.push(remote.clone());
@@ -77,6 +79,7 @@ pub fn start_upload(
     file_size: u64,
     engine: State<'_, TransferEngine>,
 ) -> Result<String, String> {
+    let _ = normalize_and_validate(&local_path)?;
     let task = TransferTask::new(
         host_id,
         filename,
@@ -97,10 +100,11 @@ pub fn start_download(
     file_size: u64,
     engine: State<'_, TransferEngine>,
 ) -> Result<String, String> {
+    let safe_local = normalize_path_for_create(&local_path)?;
     let task = TransferTask::new(
         host_id,
         filename,
-        local_path,
+        safe_local.to_string_lossy().to_string(),
         remote_path,
         "download".to_string(),
         file_size,
@@ -185,12 +189,14 @@ pub fn get_resume_records(
 
 #[tauri::command]
 pub fn check_local_file_exists(path: String) -> Result<bool, String> {
-    Ok(std::path::Path::new(&path).exists())
+    let safe_path = normalize_path_for_create(&path)?;
+    Ok(safe_path.exists())
 }
 
 #[tauri::command]
 pub fn get_local_file_size(path: String) -> Result<u64, String> {
-    let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    let safe_path = normalize_and_validate(&path)?;
+    let metadata = std::fs::metadata(&safe_path).map_err(|e| e.to_string())?;
     Ok(metadata.len())
 }
 
@@ -202,6 +208,7 @@ pub async fn start_directory_upload(
     manager: State<'_, ConnectionManager>,
     engine: State<'_, TransferEngine>,
 ) -> Result<Vec<String>, String> {
+    let _ = normalize_and_validate(&local_dir)?;
     let entries = collect_local_dir_entries(&local_dir, &remote_dir)?;
 
     let conn_arc = manager.get_connection(host_id)?;
@@ -241,6 +248,8 @@ pub async fn start_directory_download(
     manager: State<'_, ConnectionManager>,
     engine: State<'_, TransferEngine>,
 ) -> Result<Vec<String>, String> {
+    let safe_local_dir = normalize_path_for_create(&local_dir)?;
+    let safe_local_str = safe_local_dir.to_string_lossy().to_string();
     let conn_arc = manager.get_connection(host_id)?;
     let engine = engine.inner().clone();
 
@@ -248,7 +257,7 @@ pub async fn start_directory_download(
         let mut conn = conn_arc.lock().map_err(|e| e.to_string())?;
         let mut files: Vec<(String, String, String, u64)> = Vec::new();
         let mut dirs: Vec<String> = Vec::new();
-        let mut queue = vec![(remote_dir, local_dir)];
+        let mut queue = vec![(remote_dir, safe_local_str)];
 
         while let Some((remote, local)) = queue.pop() {
             dirs.push(local.clone());
@@ -257,8 +266,10 @@ pub async fn start_directory_download(
                 if entry.name == "." || entry.name == ".." {
                     continue;
                 }
+                let safe_name = sanitize_filename(&entry.name)
+                    .map_err(|e| e.to_string())?;
                 let entry_local = std::path::Path::new(&local)
-                    .join(&entry.name)
+                    .join(&safe_name)
                     .to_string_lossy()
                     .to_string();
                 if entry.is_dir {
@@ -277,6 +288,7 @@ pub async fn start_directory_download(
     .map_err(|e| e.to_string())??;
 
     for dir in &dirs_to_create {
+        let _ = normalize_path_for_create(dir)?;
         std::fs::create_dir_all(dir)
             .map_err(|e| format!("创建本地目录失败 {}: {}", dir, e))?;
     }

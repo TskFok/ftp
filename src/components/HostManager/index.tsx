@@ -34,7 +34,7 @@ const HostManager: React.FC = () => {
     updateHost,
     deleteHost,
     setCurrentHost,
-    testConnection,
+    testConnectionById,
   } = useHostStore();
 
   const { connectedHostId, connectAndBrowse, disconnectHost } =
@@ -101,7 +101,7 @@ const HostManager: React.FC = () => {
       if (!host.id) return;
       setTestingId(host.id);
       try {
-        await testConnection(host);
+        await testConnectionById(host.id);
         message.success(`连接 ${host.name} 成功`);
       } catch (err) {
         message.error(`连接失败: ${err}`);
@@ -109,7 +109,7 @@ const HostManager: React.FC = () => {
         setTestingId(null);
       }
     },
-    [testConnection],
+    [testConnectionById],
   );
 
   const handleConnect = useCallback(

@@ -12,6 +12,7 @@ interface HostState {
   deleteHost: (id: number) => Promise<void>;
   setCurrentHost: (host: Host | null) => void;
   testConnection: (host: Host) => Promise<void>;
+  testConnectionById: (hostId: number) => Promise<void>;
 }
 
 export const useHostStore = create<HostState>((set, get) => ({
@@ -23,7 +24,11 @@ export const useHostStore = create<HostState>((set, get) => ({
     set({ loading: true });
     try {
       const hosts = await invoke<Host[]>("get_hosts");
-      set({ hosts });
+      const sanitized = hosts.map((h) => {
+        const { password: _, key_path: __, ...rest } = h;
+        return { ...rest, password: undefined, key_path: undefined };
+      });
+      set({ hosts: sanitized });
     } finally {
       set({ loading: false });
     }
@@ -53,5 +58,8 @@ export const useHostStore = create<HostState>((set, get) => ({
 
   testConnection: async (host: Host) => {
     await invoke("test_connection", { host });
+  },
+  testConnectionById: async (hostId: number) => {
+    await invoke("test_connection_by_id", { hostId });
   },
 }));

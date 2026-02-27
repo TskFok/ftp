@@ -1,7 +1,10 @@
 pub mod commands;
+pub mod crypto;
 pub mod db;
 pub mod models;
 pub mod services;
+pub mod utils;
+pub mod validation;
 
 use db::Database;
 use services::connection::ConnectionManager;
@@ -29,7 +32,9 @@ pub fn run() {
                 .path()
                 .app_data_dir()
                 .expect("Failed to get app data dir");
-            let database = Database::new(app_data_dir).expect("Failed to initialize database");
+            let database = Database::new(app_data_dir)
+                .map_err(|e| e.to_string())
+                .expect("Failed to initialize database");
             let db_arc = Arc::new(database);
 
             let conn_manager = ConnectionManager::new();
@@ -65,6 +70,7 @@ pub fn run() {
             commands::connection::connect_host,
             commands::connection::disconnect_host,
             commands::connection::test_connection,
+            commands::connection::test_connection_by_id,
             commands::connection::connection_status,
             commands::connection::active_connections,
             commands::connection::list_remote_dir,

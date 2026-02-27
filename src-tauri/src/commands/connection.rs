@@ -1,6 +1,7 @@
 use crate::db::host_repo;
 use crate::models::host::Host;
 use crate::services::connection::{ConnectionManager, FileEntry};
+use crate::validation::host::validate_host;
 use crate::SharedDatabase;
 use tauri::State;
 
@@ -11,8 +12,9 @@ pub async fn connect_host(
     manager: State<'_, ConnectionManager>,
 ) -> Result<(), String> {
     let host = {
+        let key = db.encryption_key();
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        host_repo::get_by_id(&conn, host_id)
+        host_repo::get_by_id(&conn, host_id, key)
             .map_err(|e| e.to_string())?
             .ok_or_else(|| format!("Host {} not found", host_id))?
     };
@@ -36,6 +38,24 @@ pub async fn disconnect_host(
 
 #[tauri::command]
 pub async fn test_connection(host: Host) -> Result<(), String> {
+    validate_host(&host)?;
+    tokio::task::spawn_blocking(move || ConnectionManager::test_connection(&host))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn test_connection_by_id(
+    host_id: i64,
+    db: State<'_, SharedDatabase>,
+) -> Result<(), String> {
+    let host = {
+        let key = db.encryption_key();
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        host_repo::get_by_id(&conn, host_id, key)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Host {} not found", host_id))?
+    };
     tokio::task::spawn_blocking(move || ConnectionManager::test_connection(&host))
         .await
         .map_err(|e| e.to_string())?

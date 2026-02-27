@@ -4,25 +4,44 @@ pub mod migrations;
 pub mod schema;
 pub mod transfer_repo;
 
+use crate::crypto;
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 pub struct Database {
     pub conn: Mutex<Connection>,
+    encryption_key: Option<[u8; 32]>,
 }
 
 impl Database {
-    pub fn new(app_data_dir: PathBuf) -> Result<Self, rusqlite::Error> {
+    pub fn new(app_data_dir: PathBuf) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         std::fs::create_dir_all(&app_data_dir).ok();
         let db_path = app_data_dir.join("ftp_tool.db");
-        let conn = Connection::open(db_path)?;
+        let conn = Connection::open(&db_path)?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+        let encryption_key = crypto::load_or_create_key(&app_data_dir).ok();
         let db = Self {
             conn: Mutex::new(conn),
+            encryption_key,
         };
         db.run_migrations()?;
         Ok(db)
+    }
+
+    #[cfg(test)]
+    pub fn new_test(conn: Connection) -> Result<Self, rusqlite::Error> {
+        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+        let db = Self {
+            conn: Mutex::new(conn),
+            encryption_key: None,
+        };
+        db.run_migrations()?;
+        Ok(db)
+    }
+
+    pub fn encryption_key(&self) -> Option<&[u8; 32]> {
+        self.encryption_key.as_ref()
     }
 
     fn run_migrations(&self) -> Result<(), rusqlite::Error> {

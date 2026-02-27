@@ -45,7 +45,10 @@ describe("hostStore", () => {
       await useHostStore.getState().fetchHosts();
 
       expect(mockInvoke).toHaveBeenCalledWith("get_hosts");
-      expect(useHostStore.getState().hosts).toEqual([sampleHost, sampleHost2]);
+      expect(useHostStore.getState().hosts).toEqual([
+        { ...sampleHost, password: undefined, key_path: undefined },
+        { ...sampleHost2, password: undefined, key_path: undefined },
+      ]);
       expect(useHostStore.getState().loading).toBe(false);
     });
 
@@ -68,7 +71,9 @@ describe("hostStore", () => {
 
       expect(mockInvoke).toHaveBeenCalledWith("create_host", { host: newHost });
       expect(created).toEqual(sampleHost);
-      expect(useHostStore.getState().hosts).toEqual([sampleHost]);
+      expect(useHostStore.getState().hosts).toEqual([
+        { ...sampleHost, password: undefined, key_path: undefined },
+      ]);
     });
   });
 
@@ -96,7 +101,9 @@ describe("hostStore", () => {
       await useHostStore.getState().deleteHost(1);
 
       expect(mockInvoke).toHaveBeenCalledWith("delete_host", { id: 1 });
-      expect(useHostStore.getState().hosts).toEqual([sampleHost2]);
+      expect(useHostStore.getState().hosts).toEqual([
+        { ...sampleHost2, password: undefined, key_path: undefined },
+      ]);
     });
 
     it("删除当前选中主机时清除 currentHost", async () => {

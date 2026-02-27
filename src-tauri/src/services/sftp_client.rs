@@ -1,9 +1,43 @@
-use ssh2::Session;
+use ssh2::{CheckResult, KnownHostFileKind, Session};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::TcpStream;
 use std::path::Path;
 
 use super::connection::{ConnectionTrait, FileEntry, CHUNK_SIZE};
+
+fn verify_host_key(session: &mut Session, host: &str, port: u16) -> Result<(), String> {
+    let known_hosts_path = dirs::home_dir()
+        .ok_or_else(|| "无法获取用户主目录".to_string())?
+        .join(".ssh")
+        .join("known_hosts");
+
+    let mut known_hosts = session.known_hosts().map_err(|e| e.to_string())?;
+    if known_hosts_path.exists() {
+        let _ = known_hosts.read_file(&known_hosts_path, KnownHostFileKind::OpenSSH);
+    }
+
+    let (key, _key_type) = session
+        .host_key()
+        .ok_or_else(|| "无法获取主机密钥".to_string())?;
+    let host_str = if port == 22 {
+        host.to_string()
+    } else {
+        format!("[{}]:{}", host, port)
+    };
+
+    match known_hosts.check(&host_str, key) {
+        CheckResult::Match => Ok(()),
+        CheckResult::Mismatch => Err(format!(
+            "主机密钥不匹配，可能存在中间人攻击。请检查 ~/.ssh/known_hosts 中的 {} 条目",
+            host_str
+        )),
+        CheckResult::NotFound => Err(format!(
+            "主机 {} 未在 known_hosts 中。请先使用 ssh 连接一次以信任该主机，或手动添加到 ~/.ssh/known_hosts",
+            host_str
+        )),
+        CheckResult::Failure => Err("主机密钥验证失败".to_string()),
+    }
+}
 
 pub struct SftpClient {
     host: String,
@@ -48,6 +82,8 @@ impl ConnectionTrait for SftpClient {
         let mut session = Session::new().map_err(|e| e.to_string())?;
         session.set_tcp_stream(tcp);
         session.handshake().map_err(|e| e.to_string())?;
+
+        verify_host_key(&mut session, &self.host, self.port)?;
 
         if let Some(ref key_path) = self.key_path {
             session

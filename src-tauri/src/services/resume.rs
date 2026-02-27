@@ -86,14 +86,14 @@ mod tests {
 
     fn setup_test_db() -> Database {
         let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
         migrations::run_all(&conn).unwrap();
         conn.execute(
             "INSERT INTO hosts (name, host, port, protocol, username) VALUES ('test', 'localhost', 22, 'sftp', 'user')",
             [],
-        ).unwrap();
-        Database {
-            conn: std::sync::Mutex::new(conn),
-        }
+        )
+        .unwrap();
+        Database::new_test(conn).unwrap()
     }
 
     #[test]

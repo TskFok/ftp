@@ -1,4 +1,5 @@
 use crate::services::connection::FileEntry;
+use crate::utils::path::normalize_and_validate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -12,8 +13,9 @@ pub struct LocalFileEntry {
 
 #[tauri::command]
 pub fn list_local_dir(path: String) -> Result<Vec<FileEntry>, String> {
-    let entries =
-        std::fs::read_dir(&path).map_err(|e| format!("Failed to read directory: {}", e))?;
+    let safe_path = normalize_and_validate(&path)?;
+    let entries = std::fs::read_dir(&safe_path)
+        .map_err(|e| format!("Failed to read directory: {}", e))?;
 
     let mut files = Vec::new();
     for entry in entries {
