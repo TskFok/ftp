@@ -60,6 +60,21 @@ export function useFileBrowser() {
     [setConnectedHostId, fetchRemoteFiles],
   );
 
+  const navigateToBookmark = useCallback(
+    async (bookmark: { host_id: number; remote_dir?: string | null }) => {
+      const targetDir = bookmark.remote_dir || "/";
+      if (connectedHostId !== bookmark.host_id) {
+        if (connectedHostId) {
+          await invoke("disconnect_host", { hostId: connectedHostId });
+        }
+        await invoke("connect_host", { hostId: bookmark.host_id });
+        setConnectedHostId(bookmark.host_id);
+      }
+      await fetchRemoteFiles(bookmark.host_id, targetDir);
+    },
+    [connectedHostId, setConnectedHostId, fetchRemoteFiles]
+  );
+
   const disconnectHost = useCallback(async () => {
     if (!connectedHostId) return;
     await invoke("disconnect_host", { hostId: connectedHostId });
@@ -86,6 +101,7 @@ export function useFileBrowser() {
     navigateRemote,
     navigateRemoteUp,
     connectAndBrowse,
+    navigateToBookmark,
     disconnectHost,
     setLocalPath,
     setRemotePath,

@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { Button, Card, Space, Input, Modal, message, Popconfirm } from "antd";
+import { Button, Card, Space, Input, Modal, message, Popconfirm, Tooltip } from "antd";
 import {
   ArrowUpOutlined,
   ReloadOutlined,
   FolderAddOutlined,
   DeleteOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 import { invoke } from "@tauri-apps/api/core";
 import type { FileEntry } from "../../types";
@@ -23,6 +24,7 @@ interface FilePanelProps {
   onNavigateUp: () => void;
   onRefresh: () => void;
   onSelect: (paths: string[]) => void;
+  onAddBookmark?: (hostId: number, path: string) => void;
 }
 
 const FilePanel: React.FC<FilePanelProps> = ({
@@ -37,6 +39,7 @@ const FilePanel: React.FC<FilePanelProps> = ({
   onNavigateUp,
   onRefresh,
   onSelect,
+  onAddBookmark,
 }) => {
   const [mkdirVisible, setMkdirVisible] = useState(false);
   const [newDirName, setNewDirName] = useState("");
@@ -156,6 +159,20 @@ const FilePanel: React.FC<FilePanelProps> = ({
               disabled={disabled}
               title="新建文件夹"
             />
+          )}
+          {mode === "remote" && hostId && onAddBookmark && (
+            <Tooltip title="收藏此目录">
+              <Button
+                type="text"
+                size="small"
+                icon={<StarOutlined />}
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddBookmark(hostId, path || "/");
+                }}
+              />
+            </Tooltip>
           )}
           {selectedFiles.length > 0 && mode === "remote" && (
             <Popconfirm

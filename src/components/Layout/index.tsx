@@ -11,8 +11,27 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ sidebar, children }) => {
   return (
     <AntLayout style={{ height: "100vh" }}>
-      <Sider width={240} theme="light" style={{ borderRight: "1px solid #f0f0f0" }}>
-        {sidebar}
+      <Sider
+        width={240}
+        theme="light"
+        style={{
+          borderRight: "1px solid #f0f0f0",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
+          {sidebar}
+        </div>
       </Sider>
       <AntLayout>
         <Header

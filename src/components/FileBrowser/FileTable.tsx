@@ -63,12 +63,26 @@ const FileTable: React.FC<FileTableProps> = ({
     return items;
   };
 
+  const parseModifiedTs = (modified: string | undefined): number => {
+    if (!modified) return 0;
+    const ts = Number(modified);
+    if (!isNaN(ts)) return ts;
+    const d = new Date(modified);
+    return isNaN(d.getTime()) ? 0 : Math.floor(d.getTime() / 1000);
+  };
+
   const columns = [
     {
       title: "名称",
       dataIndex: "name",
       key: "name",
       ellipsis: true,
+      sorter: (a: FileEntry, b: FileEntry) => {
+        if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+        return (a.name || "").localeCompare(b.name || "", undefined, { numeric: true });
+      },
+      showSorterTooltip: false,
+      defaultSortOrder: "ascend" as const,
       render: (name: string, record: FileEntry) => (
         <span style={{ cursor: record.is_dir ? "pointer" : "default" }}>
           {record.is_dir ? (
@@ -85,6 +99,11 @@ const FileTable: React.FC<FileTableProps> = ({
       dataIndex: "size",
       key: "size",
       width: 90,
+      sorter: (a: FileEntry, b: FileEntry) => {
+        if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+        return (a.size || 0) - (b.size || 0);
+      },
+      showSorterTooltip: false,
       render: (size: number, record: FileEntry) =>
         record.is_dir ? "--" : formatFileSize(size),
     },
@@ -93,6 +112,9 @@ const FileTable: React.FC<FileTableProps> = ({
       dataIndex: "modified",
       key: "modified",
       width: 150,
+      sorter: (a: FileEntry, b: FileEntry) =>
+        parseModifiedTs(a.modified) - parseModifiedTs(b.modified),
+      showSorterTooltip: false,
       render: (modified: string | undefined) => {
         if (!modified) return "--";
         const ts = Number(modified);

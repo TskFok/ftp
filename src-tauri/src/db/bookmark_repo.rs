@@ -48,6 +48,16 @@ pub fn get_by_host(
     rows.collect()
 }
 
+pub fn get_all(conn: &Connection) -> Result<Vec<DirectoryBookmark>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT id, host_id, remote_dir, local_dir, label, last_used_at \
+         FROM directory_bookmarks \
+         ORDER BY last_used_at DESC NULLS LAST",
+    )?;
+    let rows = stmt.query_map([], row_to_bookmark)?;
+    rows.collect()
+}
+
 pub fn touch(conn: &Connection, id: i64) -> Result<bool, rusqlite::Error> {
     let changed = conn.execute(
         "UPDATE directory_bookmarks SET last_used_at = datetime('now') WHERE id = ?1",
@@ -130,6 +140,28 @@ mod tests {
 
         let all = get_by_host(&conn, hid).unwrap();
         assert_eq!(all.len(), 3);
+    }
+
+    #[test]
+    fn test_get_all() {
+        let conn = setup_db();
+        let host = insert_test_host(&conn);
+        let hid = host.id.unwrap();
+
+        for i in 0..2 {
+            let bm = DirectoryBookmark {
+                id: None,
+                host_id: hid,
+                remote_dir: Some(format!("/path/{}", i)),
+                local_dir: None,
+                label: format!("all-bm-{}", i),
+                last_used_at: None,
+            };
+            insert(&conn, &bm).unwrap();
+        }
+
+        let all = get_all(&conn).unwrap();
+        assert_eq!(all.len(), 2);
     }
 
     #[test]

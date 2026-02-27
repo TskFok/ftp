@@ -91,7 +91,7 @@ impl ConnectionManager {
         {
             let conns = self.connections.lock().map_err(|e| e.to_string())?;
             if conns.contains_key(&host_id) {
-                return Err(format!("Host {} is already connected", host_id));
+                return Ok(());
             }
         }
 
@@ -302,6 +302,30 @@ mod tests {
     fn test_disconnect_nonexistent_is_ok() {
         let manager = ConnectionManager::new();
         assert!(manager.disconnect(999).is_ok());
+    }
+
+    #[test]
+    fn test_connect_idempotent_when_already_connected() {
+        let manager = ConnectionManager::new();
+        manager
+            .insert_mock_connection(1, Box::new(MockClient::new(false)))
+            .unwrap();
+
+        let host = Host {
+            id: Some(1),
+            name: "test".into(),
+            host: "127.0.0.1".into(),
+            port: 21,
+            protocol: Protocol::Ftp,
+            username: "user".into(),
+            password: Some("pass".into()),
+            key_path: None,
+            created_at: None,
+            updated_at: None,
+        };
+
+        assert!(manager.connect(&host).is_ok());
+        assert!(manager.is_connected(1));
     }
 
     #[test]

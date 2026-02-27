@@ -173,7 +173,7 @@ const HostManager: React.FC = () => {
         </Button>
       </div>
 
-      <div style={{ flex: 1, overflow: "auto" }}>
+      <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
         <List
           loading={loading}
           dataSource={hosts}

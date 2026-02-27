@@ -1,5 +1,6 @@
 import AppLayout from "./components/Layout";
 import HostManager from "./components/HostManager";
+import BookmarkPanel from "./components/BookmarkPanel";
 import FileBrowser from "./components/FileBrowser";
 import TransferQueue from "./components/TransferQueue";
 import TransferHistory from "./components/TransferHistory";
@@ -10,7 +11,14 @@ function App() {
   useTransferListener();
 
   return (
-    <AppLayout sidebar={<HostManager />}>
+    <AppLayout
+      sidebar={
+        <>
+          <HostManager />
+          <BookmarkPanel />
+        </>
+      }
+    >
       <FileBrowser />
       <TransferQueue />
       <TransferHistory />
